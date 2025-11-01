@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Waste Management System - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .navbar-brand {
+            font-weight: bold;
+            color: #28a745 !important;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card-header {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            font-weight: bold;
+        }
+        .biodegradable-card {
+            border-left: 5px solid #28a745;
+        }
+        .non-biodegradable-card {
+            border-left: 5px solid #dc3545;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-online {
+            background-color: #28a745;
+        }
+        .status-offline {
+            background-color: #dc3545;
+        }
+        .container-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container-card.full {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+        .container-card.filling {
+            background: linear-gradient(135deg, #feca57 0%, #ff9ff3 100%);
+        }
+        .container-card.empty {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            color: #333;
+        }
+        .progress {
+            height: 8px;
+            border-radius: 10px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            border: none;
+            border-radius: 25px;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #218838, #1ca085);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            border: none;
+            border-radius: 25px;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            border: none;
+            border-radius: 25px;
+        }
+        .camera-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            font-size: 24px;
+            margin: 10px;
+            transition: all 0.3s;
+        }
+        .camera-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        }
+        .camera-btn.active {
+            background: linear-gradient(135deg, #27ae60, #229954);
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+        }
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        .alert-custom {
+            border-radius: 15px;
+            border: none;
+        }
+        .system-status {
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        .status-good {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-recycle me-2"></i>
+                IoT Waste Management
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/"><i class="fas fa-tachometer-alt me-1"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/camera"><i class="fas fa-camera me-1"></i> Camera</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/statistics"><i class="fas fa-chart-bar me-1"></i> Statistics</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- System Status -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-server me-2"></i>System Status
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="systemStatus">
+                            <!-- Status indicators will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div class="row mb-4">
+            <!-- Today's Statistics -->
+            <div class="col-lg-8 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-line me-2"></i>Today's Statistics
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="todayStats">
+                            <!-- Stats will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="col-lg-4 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </div>
+                    <div class="card-body text-center">
+                        <a href="/camera" class="btn btn-success btn-lg mb-3">
+                            <i class="fas fa-camera me-2"></i>Take Photo
+                        </a>
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary" onclick="openContainer(1)">
+                                    <i class="fas fa-box-open me-1"></i>Open Bio
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-danger" onclick="openContainer(2)">
+                                    <i class="fas fa-box-open me-1"></i>Open Non-Bio
+                                </button>
+                            </div>
+                        </div>
+                        <button class="btn btn-danger btn-lg" onclick="clearData()">
+                            <i class="fas fa-trash-alt me-2"></i>Empty Dustbin
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Container Status -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-boxes me-2"></i>Container Status
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="containerStatus">
+                            <!-- Container status will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="row mb-4">
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-pie-chart me-2"></i>Waste Distribution
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="wasteDistributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-bar me-2"></i>Daily Collections
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="dailyCollectionsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-history me-2"></i>Recent Activity
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="recentActivity">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Type</th>
+                                        <th>Confidence</th>
+                                        <th>Container</th>
+                                        <th>Method</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Recent activity will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera Modal -->
+    <div class="modal fade" id="cameraModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Camera Feed</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <video id="cameraFeed" width="100%" height="400" autoplay muted></video>
+                    <canvas id="photoCanvas" style="display: none;"></canvas>
+                    <div class="mt-3">
+                        <button class="camera-btn" id="captureBtn">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                        <button class="camera-btn" id="startCameraBtn">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <button class="camera-btn" id="stopCameraBtn">
+                            <i class="fas fa-stop"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Initialize Socket.IO
+        const socket = io();
+
+        // Chart instances
+        let wasteDistributionChart = null;
+        let dailyCollectionsChart = null;
+
+        // Global uptime tracking
+        let currentUptimeSeconds = 0;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSystemStatus();
+            loadTodayStats();
+            loadContainerStatus();
+            loadRecentActivity();
+            initializeCharts();
+
+            // Start real-time updates
+            startRealtimeUpdates();
+
+            // Start uptime counter
+            startUptimeCounter();
+
+            // Socket event listeners
+            socket.on('stats_update', function(data) {
+                updateTodayStats(data);
+                updateCharts();
+            });
+
+            socket.on('new_collection', function(data) {
+                addRecentActivity(data);
+                updateCharts();
+            });
+
+            socket.on('container_update', function(data) {
+                updateContainerStatus(data);
+            });
+
+            socket.on('camera_status', function(data) {
+                updateCameraStatus(data.active);
+            });
+
+            socket.on('uptime_update', function(data) {
+                currentUptimeSeconds = data.uptime_seconds;
+                updateUptimeDisplay(data.uptime_formatted);
+            });
+        });
+
+        function loadSystemStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    const statusDiv = document.getElementById('systemStatus');
+                    const uptime = new Date(data.uptime_seconds * 1000).toISOString().substr(11, 8);
+
+                    statusDiv.innerHTML = `
+                        <div class="col-md-3 mb-2">
+                            <div class="system-status status-good">
+                                <i class="fas fa-clock me-1"></i>
+                                <strong>Uptime:</strong> <span id="uptimeDisplay">${uptime}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <div class="system-status ${data.camera_active ? 'status-good' : 'status-warning'}">
+                                <i class="fas fa-camera me-1"></i>
+                                <strong>Camera:</strong> ${data.camera_active ? 'Active' : 'Inactive'}
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <div class="system-status ${data.arduino_connected ? 'status-good' : 'status-error'}">
+                                <i class="fas fa-microchip me-1"></i>
+                                <strong>Arduino:</strong> ${data.arduino_connected ? 'Connected' : 'Disconnected'}
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <div class="system-status status-good">
+                                <i class="fas fa-brain me-1"></i>
+                                <strong>AI Models:</strong> Available
+                            </div>
+                        </div>
+                    `;
+                })
+                .catch(error => {
+                    console.error('Error loading system status:', error);
+                });
+        }
+
+        function updateUptimeDisplay(seconds, formatted) {
+            const uptimeElement = document.getElementById('uptimeDisplay');
+            if (uptimeElement) {
+                uptimeElement.textContent = formatted;
+            }
+        }
+
+        function startRealtimeUpdates() {
+            // Poll system status every 2-3 seconds
+            setInterval(function() {
+                fetch('/api/status')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Update camera and Arduino status
+                        const statusDiv = document.getElementById('systemStatus');
+                        const statusItems = statusDiv.querySelectorAll('.system-status');
+
+                        if (statusItems.length >= 3) {
+                            // Update camera status
+                            const cameraStatus = statusItems[1];
+                            const cameraClass = data.camera_active ? 'status-good' : 'status-warning';
+                            const cameraText = data.camera_active ? 'Active' : 'Inactive';
+                            cameraStatus.className = `system-status ${cameraClass}`;
+                            cameraStatus.innerHTML = `<i class="fas fa-camera me-1"></i><strong>Camera:</strong> ${cameraText}`;
+
+                            // Update Arduino status
+                            const arduinoStatus = statusItems[2];
+                            const arduinoClass = data.arduino_connected ? 'status-good' : 'status-error';
+                            const arduinoText = data.arduino_connected ? 'Connected' : 'Disconnected';
+                            arduinoStatus.className = `system-status ${arduinoClass}`;
+                            arduinoStatus.innerHTML = `<i class="fas fa-microchip me-1"></i><strong>Arduino:</strong> ${arduinoText}`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error polling system status:', error);
+                    });
+            }, 2500); // Poll every 2.5 seconds
+        }
+
+        function loadTodayStats() {
+            fetch('/api/statistics')
+                .then(response => response.json())
+                .then(data => {
+                    updateTodayStats(data.today_stats);
+                })
+                .catch(error => {
+                    console.error('Error loading today stats:', error);
+                });
+        }
+
+        function updateTodayStats(stats) {
+            const statsDiv = document.getElementById('todayStats');
+            statsDiv.innerHTML = `
+                <div class="col-md-3 mb-3">
+                    <div class="text-center">
+                        <div class="stats-number">${stats.total_collections}</div>
+                        <div class="text-muted">Total Collections</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="text-center">
+                        <div class="stats-number text-success">${stats.biodegradable_count}</div>
+                        <div class="text-muted">Biodegradable</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="text-center">
+                        <div class="stats-number text-danger">${stats.non_biodegradable_count}</div>
+                        <div class="text-muted">Non-Biodegradable</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="text-center">
+                        <div class="stats-number">${stats.uptime_hours.toFixed(1)}</div>
+                        <div class="text-muted">Hours Online</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function loadContainerStatus() {
+            fetch('/api/statistics')
+                .then(response => response.json())
+                .then(data => {
+                    updateContainerStatusDisplay(data.containers);
+                })
+                .catch(error => {
+                    console.error('Error loading container status:', error);
+                });
+        }
+
+        function updateContainerStatusDisplay(containers) {
+            const containerDiv = document.getElementById('containerStatus');
+            containerDiv.innerHTML = '';
+
+            containers.forEach(container => {
+                const statusClass = container.status === 'full' ? 'full' :
+                                  container.status === 'filling' ? 'filling' : 'empty';
+
+                const containerType = container.container_id === 1 ? 'Biodegradable' : 'Non-Biodegradable';
+                const containerIcon = container.container_id === 1 ? 'fas fa-leaf' : 'fas fa-trash';
+
+                containerDiv.innerHTML += `
+                    <div class="col-md-6 mb-3">
+                        <div class="card container-card ${statusClass}">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">
+                                    <i class="${containerIcon} me-2"></i>
+                                    Container ${container.container_id} (${containerType})
+                                </h5>
+                                <div class="mb-2">
+                                    <span class="badge bg-light text-dark">${containerType}</span>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="progress">
+                                        <div class="progress-bar bg-light" role="progressbar"
+                                             style="width: ${container.fill_level}%"
+                                             aria-valuenow="${container.fill_level}"
+                                             aria-valuemin="0" aria-valuemax="100">
+                                            ${container.fill_level.toFixed(1)}%
+                                        </div>
+                                    </div>
+                                </div>
+                                <small>Last updated: ${new Date(container.last_updated).toLocaleString()}</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function updateContainerStatus(data) {
+            // Update specific container status
+            fetch('/api/statistics')
+                .then(response => response.json())
+                .then(data => {
+                    updateContainerStatusDisplay(data.containers);
+                });
+        }
+
+        function loadRecentActivity() {
+            fetch('/api/statistics')
+                .then(response => response.json())
+                .then(data => {
+                    updateRecentActivity(data.recent_collections);
+                })
+                .catch(error => {
+                    console.error('Error loading recent activity:', error);
+                });
+        }
+
+        function updateRecentActivity(collections) {
+            const tbody = document.querySelector('#recentActivity tbody');
+            tbody.innerHTML = '';
+
+            collections.forEach(collection => {
+                const icon = collection.item_type === 'Biodegradable' ? 'fas fa-leaf text-success' : 'fas fa-trash text-danger';
+                const badgeClass = collection.method === 'huggingface_api' ? 'badge bg-primary' : 'badge bg-secondary';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${new Date(collection.timestamp).toLocaleString()}</td>
+                        <td><i class="${icon} me-1"></i>${collection.item_type}</td>
+                        <td>${(collection.confidence * 100).toFixed(1)}%</td>
+                        <td>Container ${collection.container_id}</td>
+                        <td><span class="${badgeClass}">${collection.method}</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function addRecentActivity(data) {
+            const tbody = document.querySelector('#recentActivity tbody');
+            const icon = data.item_type === 'Biodegradable' ? 'fas fa-leaf text-success' : 'fas fa-trash text-danger';
+            const badgeClass = data.method === 'huggingface_api' ? 'badge bg-primary' : 'badge bg-secondary';
+
+            const row = tbody.insertRow(0);
+            row.innerHTML = `
+                <td>${new Date(data.timestamp).toLocaleString()}</td>
+                <td><i class="${icon} me-1"></i>${data.item_type}</td>
+                <td>${(data.confidence * 100).toFixed(1)}%</td>
+                <td>Container ${data.container_id}</td>
+                <td><span class="${badgeClass}">${data.method}</span></td>
+            `;
+
+            // Keep only last 10 entries
+            while (tbody.rows.length > 10) {
+                tbody.deleteRow(10);
+            }
+        }
+
+        function initializeCharts() {
+            // Waste Distribution Chart
+            const ctx1 = document.getElementById('wasteDistributionChart').getContext('2d');
+            wasteDistributionChart = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Biodegradable', 'Non-Biodegradable'],
+                    datasets: [{
+                        data: [0, 0],
+                        backgroundColor: ['#28a745', '#dc3545'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Daily Collections Chart (placeholder)
+            const ctx2 = document.getElementById('dailyCollectionsChart').getContext('2d');
+            dailyCollectionsChart = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Collections',
+                        data: [],
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateCharts() {
+            fetch('/api/statistics')
+                .then(response => response.json())
+                .then(data => {
+                    // Update waste distribution chart
+                    const total = data.today_stats.biodegradable_count + data.today_stats.non_biodegradable_count;
+                    if (total > 0) {
+                        wasteDistributionChart.data.datasets[0].data = [
+                            data.today_stats.biodegradable_count,
+                            data.today_stats.non_biodegradable_count
+                        ];
+                        wasteDistributionChart.update();
+                    }
+
+                    // Update daily collections chart
+                    if (data.daily_collections && data.daily_collections.length > 0) {
+                        const labels = data.daily_collections.map(item => {
+                            const date = new Date(item.date);
+                            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        });
+                        const values = data.daily_collections.map(item => item.collections);
+
+                        dailyCollectionsChart.data.labels = labels;
+                        dailyCollectionsChart.data.datasets[0].data = values;
+                        dailyCollectionsChart.update();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating charts:', error);
+                });
+        }
+
+        function openContainer(containerId) {
+            if (confirm(`Open container ${containerId}?`)) {
+                fetch('/api/mobile/open_container', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ container_id: containerId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`Container ${containerId} opened successfully!`);
+                    } else {
+                        alert(`Failed to open container ${containerId}: ${data.error || 'Unknown error'}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error opening container:', error);
+                    alert('Error opening container');
+                });
+            }
+        }
+
+        function clearData() {
+            if (confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
+                fetch('/api/clear_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ confirm: true })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('All data cleared successfully! The system has been reset.');
+                        location.reload(); // Refresh the page to show cleared data
+                    } else {
+                        alert(`Failed to clear data: ${data.error || 'Unknown error'}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error clearing data:', error);
+                    alert('Error clearing data');
+                });
+            }
+        }
+
+        function updateCameraStatus(active) {
+            const startBtn = document.getElementById('startCameraBtn');
+            const stopBtn = document.getElementById('stopCameraBtn');
+
+            if (active) {
+                startBtn.classList.remove('active');
+                stopBtn.classList.add('active');
+            } else {
+                startBtn.classList.add('active');
+                stopBtn.classList.remove('active');
+            }
+        }
+
+        // Camera functions
+        let cameraStream = null;
+
+        document.getElementById('startCameraBtn').addEventListener('click', function() {
+            socket.emit('start_camera');
+        });
+
+        document.getElementById('stopCameraBtn').addEventListener('click', function() {
+            socket.emit('stop_camera');
+        });
+
+        document.getElementById('captureBtn').addEventListener('click', function() {
+            // This would be implemented for actual camera capture
+            alert('Camera capture functionality would be implemented here');
+        });
+
+        function startUptimeCounter() {
+            // Update uptime every second
+            setInterval(function() {
+                currentUptimeSeconds += 1;
+                const hours = Math.floor(currentUptimeSeconds / 3600);
+                const minutes = Math.floor((currentUptimeSeconds % 3600) / 60);
+                const seconds = currentUptimeSeconds % 60;
+                const formatted = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                updateUptimeDisplay(formatted);
+            }, 1000);
+        }
+
+        // Auto-refresh data every 30 seconds
+        setInterval(function() {
+            loadTodayStats();
+            loadContainerStatus();
+            loadRecentActivity();
+        }, 30000);
+    </script>
+</body>
+</html>

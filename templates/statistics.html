@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Waste Management System - Statistics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/chart.js" rel="stylesheet">
+    <style>
+        .navbar-brand {
+            font-weight: bold;
+            color: #28a745 !important;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card-header {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            font-weight: bold;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .stats-number {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+        }
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .table th {
+            background-color: #f8f9fa;
+            border-top: none;
+            font-weight: bold;
+            color: #495057;
+        }
+        .badge-custom {
+            font-size: 0.8em;
+            padding: 4px 8px;
+        }
+        .filter-btn {
+            border-radius: 20px;
+            margin: 2px;
+            padding: 8px 16px;
+            font-size: 0.9em;
+        }
+        .filter-btn.active {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border-color: #28a745;
+        }
+        .date-range-selector {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .export-btn {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            border: none;
+            border-radius: 25px;
+            padding: 10px 20px;
+        }
+        .export-btn:hover {
+            background: linear-gradient(135deg, #218838, #1ca085);
+        }
+        .trend-indicator {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.9em;
+        }
+        .trend-up {
+            color: #28a745;
+        }
+        .trend-down {
+            color: #dc3545;
+        }
+        .trend-neutral {
+            color: #6c757d;
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 15px;
+            z-index: 10;
+        }
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #28a745;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .efficiency-meter {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+        }
+        .efficiency-meter svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+        .efficiency-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            font-weight: bold;
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-recycle me-2"></i>
+                IoT Waste Management
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="fas fa-tachometer-alt me-1"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/camera"><i class="fas fa-camera me-1"></i> Camera</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/statistics"><i class="fas fa-chart-bar me-1"></i> Statistics</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Date Range Selector -->
+        <div class="date-range-selector">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Date Range:</label>
+                    <select class="form-select" id="dateRangeSelect">
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="7days">Last 7 Days</option>
+                        <option value="30days">Last 30 Days</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+                <div class="col-md-4" id="customDateRange" style="display: none;">
+                    <label class="form-label fw-bold">From:</label>
+                    <input type="date" class="form-control" id="dateFrom">
+                    <label class="form-label fw-bold mt-2">To:</label>
+                    <input type="date" class="form-control" id="dateTo">
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn export-btn" onclick="exportData()">
+                        <i class="fas fa-download me-2"></i>Export Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="row mb-4">
+            <div class="col-lg-3 mb-4">
+                <div class="card stats-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-recycle fa-2x mb-3"></i>
+                        <div class="stats-number" id="totalCollections">0</div>
+                        <div>Total Collections</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 mb-4">
+                <div class="card stats-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-leaf fa-2x mb-3"></i>
+                        <div class="stats-number" id="biodegradableCount">0</div>
+                        <div>Biodegradable</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 mb-4">
+                <div class="card stats-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-trash fa-2x mb-3"></i>
+                        <div class="stats-number" id="nonBiodegradableCount">0</div>
+                        <div>Non-Biodegradable</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 mb-4">
+                <div class="card stats-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-percentage fa-2x mb-3"></i>
+                        <div class="stats-number" id="efficiencyRate">0%</div>
+                        <div>Sort Efficiency</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row mb-4">
+            <div class="col-lg-8 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-line me-2"></i>Waste Collection Trends
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="trendsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-pie me-2"></i>Waste Distribution
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="distributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Analytics -->
+        <div class="row mb-4">
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-bar me-2"></i>Hourly Activity
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="hourlyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-bullseye me-2"></i>Classification Accuracy
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="efficiency-meter">
+                            <svg>
+                                <circle cx="100" cy="100" r="90" fill="none" stroke="#e9ecef" stroke-width="8"/>
+                                <circle cx="100" cy="100" r="90" fill="none" stroke="#28a745"
+                                        stroke-width="8" stroke-dasharray="565.48" stroke-dashoffset="565.48"
+                                        id="accuracyCircle" stroke-linecap="round"/>
+                            </svg>
+                            <div class="efficiency-value" id="accuracyValue">0%</div>
+                        </div>
+                        <p class="mt-3 text-muted">Average Confidence Score</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Collections Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-table me-2"></i>Detailed Collections Log
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="table table-hover" id="collectionsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Type</th>
+                                        <th>Confidence</th>
+                                        <th>Container</th>
+                                        <th>Method</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Initialize Socket.IO
+        const socket = io();
+
+        // Chart instances
+        let trendsChart = null;
+        let distributionChart = null;
+        let hourlyChart = null;
+
+        // Current date range
+        let currentDateRange = 'today';
+        let customDateFrom = null;
+        let customDateTo = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            loadStatistics();
+            setupEventListeners();
+
+            // Socket event listeners
+            socket.on('stats_update', function(data) {
+                if (currentDateRange === 'today') {
+                    updateRealTimeStats(data);
+                }
+            });
+
+            socket.on('new_collection', function(data) {
+                if (currentDateRange === 'today') {
+                    addNewCollectionToTable(data);
+                }
+            });
+        });
+
+        function setupEventListeners() {
+            // Date range selector
+            document.getElementById('dateRangeSelect').addEventListener('change', function(e) {
+                currentDateRange = e.target.value;
+
+                if (currentDateRange === 'custom') {
+                    document.getElementById('customDateRange').style.display = 'block';
+                } else {
+                    document.getElementById('customDateRange').style.display = 'none';
+                    loadStatistics();
+                }
+            });
+
+            // Custom date inputs
+            document.getElementById('dateFrom').addEventListener('change', function(e) {
+                customDateFrom = e.target.value;
+                if (customDateTo) {
+                    loadStatistics();
+                }
+            });
+
+            document.getElementById('dateTo').addEventListener('change', function(e) {
+                customDateTo = e.target.value;
+                if (customDateFrom) {
+                    loadStatistics();
+                }
+            });
+        }
+
+        function loadStatistics() {
+            let url = '/api/statistics';
+
+            if (currentDateRange === 'custom' && customDateFrom && customDateTo) {
+                url += `?from=${customDateFrom}&to=${customDateTo}`;
+            } else if (currentDateRange !== 'today') {
+                url += `?range=${currentDateRange}`;
+            }
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    updateStatisticsDisplay(data);
+                    updateCharts(data);
+                    updateCollectionsTable(data.recent_collections || []);
+                })
+                .catch(error => {
+                    console.error('Error loading statistics:', error);
+                });
+        }
+
+        function updateStatisticsDisplay(data) {
+            const total = data.today_stats.total_collections;
+            const bio = data.today_stats.biodegradable_count;
+            const nonBio = data.today_stats.non_biodegradable_count;
+
+            // Calculate efficiency (biodegradable percentage)
+            const efficiency = total > 0 ? ((bio / total) * 100).toFixed(1) : 0;
+
+            document.getElementById('totalCollections').textContent = total;
+            document.getElementById('biodegradableCount').textContent = bio;
+            document.getElementById('nonBiodegradableCount').textContent = nonBio;
+            document.getElementById('efficiencyRate').textContent = efficiency + '%';
+
+            // Update accuracy meter
+            updateAccuracyMeter(data);
+        }
+
+        function updateAccuracyMeter(data) {
+            // Calculate average confidence from recent collections
+            if (data.recent_collections && data.recent_collections.length > 0) {
+                const totalConfidence = data.recent_collections.reduce((sum, item) => sum + item.confidence, 0);
+                const avgConfidence = (totalConfidence / data.recent_collections.length) * 100;
+                const accuracyPercent = Math.round(avgConfidence);
+
+                document.getElementById('accuracyValue').textContent = accuracyPercent + '%';
+
+                // Update circle progress
+                const circle = document.getElementById('accuracyCircle');
+                const circumference = 565.48; // 2 * π * 90
+                const offset = circumference - (accuracyPercent / 100) * circumference;
+                circle.style.strokeDashoffset = offset;
+            }
+        }
+
+        function updateRealTimeStats(data) {
+            // Update only today's stats in real-time
+            document.getElementById('totalCollections').textContent = data.total_collections;
+            document.getElementById('biodegradableCount').textContent = data.biodegradable_count;
+            document.getElementById('nonBiodegradableCount').textContent = data.non_biodegradable_count;
+
+            const total = data.total_collections;
+            const bio = data.biodegradable_count;
+            const efficiency = total > 0 ? ((bio / total) * 100).toFixed(1) : 0;
+            document.getElementById('efficiencyRate').textContent = efficiency + '%';
+        }
+
+        function initializeCharts() {
+            // Trends Chart
+            const ctx1 = document.getElementById('trendsChart').getContext('2d');
+            trendsChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Biodegradable',
+                            data: [],
+                            borderColor: '#28a745',
+                            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Non-Biodegradable',
+                            data: [],
+                            borderColor: '#dc3545',
+                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+
+            // Distribution Chart
+            const ctx2 = document.getElementById('distributionChart').getContext('2d');
+            distributionChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Biodegradable', 'Non-Biodegradable'],
+                    datasets: [{
+                        data: [0, 0],
+                        backgroundColor: ['#28a745', '#dc3545'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Hourly Chart
+            const ctx3 = document.getElementById('hourlyChart').getContext('2d');
+            hourlyChart = new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => i + ':00'),
+                    datasets: [{
+                        label: 'Collections',
+                        data: Array(24).fill(0),
+                        backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                        borderColor: '#28a745',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateCharts(data) {
+            const bioCount = data.today_stats.biodegradable_count;
+            const nonBioCount = data.today_stats.non_biodegradable_count;
+
+            // Update distribution chart
+            distributionChart.data.datasets[0].data = [bioCount, nonBioCount];
+            distributionChart.update();
+
+            // Update trends chart (placeholder - would need historical data)
+            // For now, just show current day's data
+            const currentHour = new Date().getHours();
+            trendsChart.data.labels = Array.from({length: currentHour + 1}, (_, i) => `${i}:00`);
+            trendsChart.data.datasets[0].data = Array(currentHour + 1).fill(bioCount);
+            trendsChart.data.datasets[1].data = Array(currentHour + 1).fill(nonBioCount);
+            trendsChart.update();
+
+            // Update hourly chart
+            const hourlyData = Array(24).fill(0);
+            if (data.recent_collections) {
+                data.recent_collections.forEach(collection => {
+                    const hour = new Date(collection.timestamp).getHours();
+                    hourlyData[hour]++;
+                });
+            }
+            hourlyChart.data.datasets[0].data = hourlyData;
+            hourlyChart.update();
+        }
+
+        function updateCollectionsTable(collections) {
+            const tbody = document.querySelector('#collectionsTable tbody');
+            tbody.innerHTML = '';
+
+            collections.forEach(collection => {
+                const icon = collection.item_type === 'Biodegradable' ? 'fas fa-leaf text-success' : 'fas fa-trash text-danger';
+                const badgeClass = collection.method === 'huggingface_api' ? 'badge bg-primary' : 'badge bg-secondary';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${new Date(collection.timestamp).toLocaleString()}</td>
+                    <td>
+                        <i class="${icon} me-1"></i>
+                        ${collection.item_type}
+                    </td>
+                    <td>
+                        <div class="progress" style="width: 60px; height: 6px;">
+                            <div class="progress-bar bg-success" style="width: ${collection.confidence * 100}%"></div>
+                        </div>
+                        <small class="ms-1">${(collection.confidence * 100).toFixed(1)}%</small>
+                    </td>
+                    <td>Container ${collection.container_id}</td>
+                    <td><span class="${badgeClass} badge-custom">${collection.method}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-info" onclick="viewDetails('${collection.id}')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function addNewCollectionToTable(data) {
+            const tbody = document.querySelector('#collectionsTable tbody');
+            const icon = data.item_type === 'Biodegradable' ? 'fas fa-leaf text-success' : 'fas fa-trash text-danger';
+            const badgeClass = data.method === 'huggingface_api' ? 'badge bg-primary' : 'badge bg-secondary';
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${new Date(data.timestamp).toLocaleString()}</td>
+                <td>
+                    <i class="${icon} me-1"></i>
+                    ${data.item_type}
+                </td>
+                <td>
+                    <div class="progress" style="width: 60px; height: 6px;">
+                        <div class="progress-bar bg-success" style="width: ${data.confidence * 100}%"></div>
+                    </div>
+                    <small class="ms-1">${(data.confidence * 100).toFixed(1)}%</small>
+                </td>
+                <td>Container ${data.container_id}</td>
+                <td><span class="${badgeClass} badge-custom">${data.method}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-info" onclick="viewDetails('${data.id}')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            `;
+
+            // Add to top of table
+            tbody.insertBefore(row, tbody.firstChild);
+
+            // Keep only last 50 entries
+            while (tbody.children.length > 50) {
+                tbody.removeChild(tbody.lastChild);
+            }
+        }
+
+        function viewDetails(collectionId) {
+            // Placeholder for viewing collection details
+            alert(`View details for collection ${collectionId}`);
+        }
+
+        function exportData() {
+            const data = {
+                dateRange: currentDateRange,
+                customFrom: customDateFrom,
+                customTo: customDateTo,
+                timestamp: new Date().toISOString()
+            };
+
+            // Create and download CSV
+            let csvContent = 'Time,Type,Confidence,Container,Method\n';
+
+            fetch('/api/statistics')
+                .then(response => response.json())
+                .then(data => {
+                    data.recent_collections.forEach(collection => {
+                        csvContent += `${new Date(collection.timestamp).toLocaleString()},${collection.item_type},${collection.confidence},${collection.container_id},${collection.method}\n`;
+                    });
+
+                    const blob = new Blob([csvContent], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `waste_statistics_${new Date().toISOString().split('T')[0]}.csv`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(error => {
+                    console.error('Error exporting data:', error);
+                    alert('Error exporting data');
+                });
+        }
+
+        // Auto-refresh every 60 seconds
+        setInterval(function() {
+            if (currentDateRange === 'today') {
+                loadStatistics();
+            }
+        }, 60000);
+    </script>
+</body>
+</html>
